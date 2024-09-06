@@ -4,6 +4,7 @@ import os
 import time
 import sys
 import fileinput
+import re
 
 from xml.etree.ElementTree import Element
 
@@ -22,6 +23,34 @@ ET.register_namespace('esel',"http://www.selinc.com/2006/61850")
 ET.register_namespace('sxy',"http://www.iec.ch/61850/2003/SCLcoordinates")
 
 logd = {'sclname': scdfile, 'user': 'fbadloggs'}
+
+
+def WriteScl(tree, scdnewfile):
+    tree.write(scdnewfile,
+               xml_declaration=True,
+               encoding='utf-8',
+               method='xml')
+
+    se_ns_state = False
+    se_ns_val = """xmlns="http://www.schneider-electric.com/IEC61850/XMLSchema" """
+    for i, line in enumerate(fileinput.input(scdnewfile, inplace=True)):
+        r0 = line.replace('&gt;', '>')
+        if not se_ns_state:
+            l = re.findall(r'.*<(.*):(GooseReceive|OrderingCode)>', line)
+            if len(l) == 1:
+                t = l[0]
+                logger.error('match %s %s', t[0], t[1], extra=logd)
+                se_ns_state = True
+                r0 = r0.replace(t[0] + ":", "")
+                r0 = r0.replace(t[1], t[1] + " " + se_ns_val)
+        else:
+            r0 = r0.replace(t[0] + ":", "")
+            l = re.findall(r'.*</(.*):(GooseReceive|OrderingCode)>', line)
+            if len(l) == 1:
+                t = l[0]
+                logger.error('match %s %s', t[0], t[1], extra=logd)
+                se_ns_state = False
+        sys.stdout.write(r0)
 
 def RemoveAP(iedse, apname):
     logger.warning("Removing %s", apname, extra=logd)
@@ -94,13 +123,13 @@ else:
     CheckAP("AP3")
 
 if newScd is True:
-    tree.write(scdnewfile,
-           xml_declaration = True,
-           encoding = 'utf-8',
-           method = 'xml')
-for i, line in enumerate(fileinput.input(scdnewfile, inplace=True)):
-    sys.stdout.write(line.replace('&gt;', '>'))
+    WriteScl(tree, scdnewfile)
 
 
+
+
+
+
+#<ns5:GooseReceive>
 #<OrderingCode xmlns="http://www.schneider-electric.com/IEC61850/XMLSchema">
 #<GooseReceive xmlns="http://www.schneider-electric.com/IEC61850/XMLSchema">
