@@ -12,15 +12,14 @@ logger = logging.getLogger(__name__)
 FORMAT = '%(asctime)s %(sclname)s %(user)-8s %(message)s'
 logging.basicConfig(format=FORMAT)
 
-
-scdfile='Busbar-Bay-Test-2-2.scd'
-se="'Schneider Electric'"
-sclns0='http://www.iec.ch/61850/2003/SCL'
-sclns="{"+sclns0+"}"
-ET.register_namespace('',sclns0)
-ET.register_namespace('eIEC61850-6-100',"http://www.iec.ch/61850/2019/SCL/6-100")
-ET.register_namespace('esel',"http://www.selinc.com/2006/61850")
-ET.register_namespace('sxy',"http://www.iec.ch/61850/2003/SCLcoordinates")
+scdfile = 'Busbar-Bay-Test-2.scd'
+se = "'Schneider Electric'"
+sclns0 = 'http://www.iec.ch/61850/2003/SCL'
+sclns = "{" + sclns0 + "}"
+ET.register_namespace('', sclns0)
+ET.register_namespace('eIEC61850-6-100', "http://www.iec.ch/61850/2019/SCL/6-100")
+ET.register_namespace('esel', "http://www.selinc.com/2006/61850")
+ET.register_namespace('sxy', "http://www.iec.ch/61850/2003/SCLcoordinates")
 
 logd = {'sclname': scdfile, 'user': 'fbadloggs'}
 
@@ -52,11 +51,15 @@ def WriteScl(tree, scdnewfile):
                 se_ns_state = False
         sys.stdout.write(r0)
 
-def RemoveAP(iedse, apname):
+
+def RemoveAP(root, iedse, apname):
     logger.warning("Removing %s", apname, extra=logd)
-    ap=iedse.find ("./" + sclns + "AccessPoint[@name='"+apname+"']")
-    #iedse.remove(ap)
+    ap = iedse.find("./" + sclns + "AccessPoint[@name='" + apname + "']")
+    path1 = "./" + sclns + "IED[@manufacturer=" + se + "]"
+
+    # iedse.remove(ap)
     return True
+
 
 def CheckAP(apname):
     logger.warning("Checking %s", apname, extra=logd)
@@ -67,42 +70,43 @@ if not os.path.exists(scdfile):
     logger.error('Fatal Error', extra=logd)
     exit(0)
 
-
 file_name, file_extension = os.path.splitext(scdfile)
-scdnewfile=f"{file_name}_{int(time.time())}.{file_extension}"
-
+scdnewfile = f"{file_name}_{int(time.time())}.{file_extension}"
 
 tree = ET.parse(scdfile)
-root=tree.getroot()
-ok=True
-newScd=False
+root = tree.getroot()
+ok = True
+newScd = False
 
-path1="./"+sclns+"IED[@manufacturer="+se+"]"
-lse=root.findall(path1)
+path1 = "./" + sclns + "IED[@manufacturer=" + se + "]"
+lse = root.findall(path1)
 
-
-if len(lse)>1:
+if len(lse) > 1:
     logger.error('Unexpected SE IED: %d', len(lse), extra=logd)
-    ok=False
+    ok = False
 
-if len(lse)==0:
+if len(lse) == 0:
     logger.error('No SE IED', extra=logd)
-    ok=False
+    ok = False
 
 if not ok:
     logger.error('Fatal Error', extra=logd)
     exit(0)
 
 # only one SE IED
-iedse=lse[0]
+iedse = lse[0]
 
-pathAp1="./"+sclns+"AccessPoint[@name='AP1']/"+sclns+"Server/../.."
-pathAp2="./"+sclns+"AccessPoint[@name='AP2']/"+sclns+"ServerAt/../.."
-pathAp3="./"+sclns+"AccessPoint[@name='AP3']/"+sclns+"ServerAt/../.."
+cap = root.findall(f"./{sclns}Communication/{sclns}SubNetwork/{sclns}ConnectedAP[@iedName='{iedse.get('name')}']")
 
-ap1=iedse.find(pathAp1)
-ap2=iedse.find(pathAp2)
-ap3=iedse.find(pathAp3)
+#  use f string
+pathAp1 = "./" + sclns + "AccessPoint[@name='AP1']/" + sclns + "Server/../.."
+pathAp2 = "./" + sclns + "AccessPoint[@name='AP2']/" + sclns + "ServerAt/../.."
+pathAp3 = "./" + sclns + "AccessPoint[@name='AP3']/" + sclns + "ServerAt/../.."
+
+ap1 = iedse.find(pathAp1)
+
+ap2 = iedse.find(pathAp2)
+ap3 = iedse.find(pathAp3)
 
 if type(ap1) is None:
     logger.error('AP1 not OK', extra=logd)
@@ -112,9 +116,9 @@ else:
 
 if type(ap2) is not None:
     logger.warning('Need to remove AP2', extra=logd)
-    newScd2=RemoveAP(iedse, "AP2")
+    newScd2 = RemoveAP(root, iedse, "AP2")
     if newScd is False:
-        newScd=True
+        newScd = True
 
 if type(ap3) is None:
     logger.error('AP3 not OK', extra=logd)
@@ -125,11 +129,3 @@ else:
 if newScd is True:
     WriteScl(tree, scdnewfile)
 
-
-
-
-
-
-#<ns5:GooseReceive>
-#<OrderingCode xmlns="http://www.schneider-electric.com/IEC61850/XMLSchema">
-#<GooseReceive xmlns="http://www.schneider-electric.com/IEC61850/XMLSchema">
